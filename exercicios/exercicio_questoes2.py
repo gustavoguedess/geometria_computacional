@@ -85,7 +85,10 @@ def triangle_orientation(a, b, c):
         return 'horario'
 
 def left(a, b, c):
-    return True if triangle_area(a, b, c)>0 else False
+    area = triangle_area(a, b, c)
+    if area>0: return 1
+    elif area<0: return -1
+    else: return 0
 
 def split_vertices(vertices):
     return [vertices[i:i+3] for i in range(0, len(vertices), 3)]
@@ -103,17 +106,54 @@ def polygon_area(vertices):
 def is_counterclockwise(area):
     return True if area>0 else False
 
+def get_classification(before, after, current, clockwise=False):
+    reflexivo = left(before, after, current) < 0 
+    if clockwise: reflexivo=not reflexivo
+    classification = 'reflexivo' if reflexivo else 'concavo'
+    return classification
 
-def vertices_classific(vertices, anticlockwise=True):
+def collision_edge(a1, a2, b1, b2):
+    la1 = left(a1, a2, b1)
+    la2 = left(a1, a2, b2)
+    lb1 = left(b1, b2, a1)
+    lb2 = left(b1, b2, a2)
+    if la1&la2&lb1&lb2 == 0: # se algum for 0, entao ha colisao
+        return False
+    if la1 == la2 or lb1 == lb2:
+        return False
+    return True
+
+def is_ear(vertices, i):
+    before_index = (i-1)%len(vertices)
+    after_index = (i+1)%len(vertices)
+    before, after = point(*vertices[before_index]), point(*vertices[after_index])
+
+    if left(before, after, point(*vertices[i])) < 0:
+        return False
+
+    for j in range(len(vertices)):
+        before_j = (j-1)%len(vertices)
+        j_point, before_j_point = point(*vertices[j]), point(*vertices[before_j])
+
+        if j==before_index or j==i or j==after_index: continue
+        col = collision_edge(before, after, before_j_point, j_point)
+        if collision_edge(before, after, before_j_point, j_point): return False
+    return True
+
+def vertices_classific(vertices):
+    area = polygon_area(vertices)
+    anticlockwise = is_counterclockwise(area)
+
     verts = split_vertices(vertices)
-    result = []
+    classifications = []
+    ears = []
     for i in range(len(verts)):
         current, before, after = point(*verts[i]), point(*verts[i-1]), point(*verts[(i+1)%len(verts)])
-        reflexivo = left(before, after, current)
-        if not anticlockwise: reflexivo=not reflexivo
-        classification = 'reflexivo' if reflexivo else 'concavo'
-        result.append(classification)
-    return result
+        classification = get_classification(before, after, current, anticlockwise)
+        classifications.append(classification)
+        ear = is_ear(verts, i)
+        ears.append(ear)
+    return classifications, ears
 
 def display():
     global VAO
@@ -148,12 +188,12 @@ def mouse(button, state, x, y):
         if len(vertices) >= 9:
             area = polygon_area(vertices)
             anticlockwise = is_counterclockwise(area)
-            vert_class = vertices_classific(vertices, anticlockwise)
+            vert_class, vert_ears = vertices_classific(vertices)
 
             orientation = 'antihorario' if anticlockwise else 'horario'
             print('Área:', abs(area), 'Orientação:', orientation)
             for i in range(len(vert_class)):
-                print(f'Ponto {vertices[i*3:i*3+3]}: {vert_class[i]}')
+                print(f'Ponto {vertices[i*3:i*3+3]}: {vert_class[i]} e orelha={vert_ears[i]}')
 
     if button == glut.GLUT_RIGHT_BUTTON and state == glut.GLUT_DOWN:
         print('clear')

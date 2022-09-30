@@ -1,0 +1,16 @@
+Seja P um conjunto de vértices de um polígono em ordem antihorária
+e p um ponto interno do polígono
+
+VisiblePolygon(P,p):
+    visPolig <- {}
+    para cada vertice v em P
+        visivel <- Segmento(v,p) intercciona nenhuma aresta de P?
+        interseccoes <- intersecções da semi-reta(v,p) com arestas
+
+        se visivel
+            se left(p,v,v+1) e tamanho(interseccoes)=1
+                visPolig+=interseccoes[0]
+            visPolig <- v
+            se right(p,v,v+1) e tamanho(interseccoes)=1
+                visPolig+=interseccoes[0]
+    retorna visPolig

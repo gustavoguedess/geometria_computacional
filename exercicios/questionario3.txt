@@ -1,0 +1,18 @@
+abaixo(p,q):
+  if p.y<q.y ou (p.y=q.y e p.x>q.x):
+    retorne SIM
+  retorne NÃO
+
+categoria_vertice(P,i):
+  se abaixo(P[i-1],P[i]) e abaixo(P[i+1],P[i]) e left(P[i-1],P[i],P[i+1])==1:
+    retorne "start"
+  senão se abaixo(P[i-1],P[i]) e abaixo(P[i+1],P[i]) e left(P[i-1],P[i],P[i+1])==-1:
+    retorne "split"
+  senão se !abaixo(P[i-1],P[i]) e !abaixo(P[i+1],P[i]) e left(P[i-1],P[i],P[i+1])==1:
+    retorne "end"
+  senão se !abaixo(P[i-1],P[i]) e !abaixo(P[i+1],P[i]) e left(P[i-1],P[i],P[i+1])==-1:
+    retorne "merge"
+  senão
+    retorne "regular"
+
+
