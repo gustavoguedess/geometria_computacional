@@ -5,7 +5,12 @@ typedef struct Face tFace;
 typedef struct DCEL tDCEL;
 
 struct Vertex{
-    double x,y,z;
+    float x,y,z;
+    tEdge *edge;
+
+    float distance(x,y,z){
+        return sqrt(pow(x-this->x,2)+pow(y-this->y,2)+pow(z-this->z,2));
+    }
 };
 
 struct Edge{
@@ -31,6 +36,13 @@ struct Edge{
         this->next = u;
         u->prev = this;
         u->face = this->face;
+    }
+    float distance(float x, float y){
+        float x1 = this->origem->x;
+        float y1 = this->origem->y;
+        float x2 = this->twin->origem->x;
+        float y2 = this->twin->origem->y;
+        return abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/sqrt(pow(y2-y1,2)+pow(x2-x1,2));
     }
 };
 
@@ -102,4 +114,46 @@ DCEU::DCEU(vector<tVertex> vertices){
 
     this->faces.push_back(first_edge);
     this->faces.push_back(first_twin);
+}
+
+tVertex* DCEU::closest_vertex(float x, float y, float distance_limit=1){
+    tVertex* closest = NULL;
+    for(auto vert: this->vertices){
+        float distance = vert->distance(x,y);
+        if(distance < distance_limit){
+            distance_limit = distance;
+            closest = vert;
+        } 
+    }
+    return closest;
+}
+
+tEdge* DCEU::closest_edge(float x, float y, float distance_limit=1){
+    tEdge* closest = NULL;
+    for(auto edge: this->edges){
+        float distance = edge->distance(x,y);
+        if(distance < distance_limit){
+            distance_limit = distance;
+            closest = edge;
+        } 
+    }
+    return closest;
+}
+
+tFace* DCEU::closest_face(float x, float y, float distance_limit=1){
+    tFace* closest = NULL;
+    tEdge vert(x,y,0);
+    for(auto face: this->faces){
+        tEdge* current = face->edge;
+        bool all_left = true;
+        do{
+            if(!left(current->origem, current->next->origem,vert))
+                all_left = false;
+        }while(current != face->edge && all_left);
+        if(all_left){
+            closest = face;
+            break;
+        }
+    }
+    return closest;
 }
