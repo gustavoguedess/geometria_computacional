@@ -23,14 +23,26 @@ struct Edge{
 
         u->next->prev = u->next = this;
     }
-    void set_twin(tEdge* u){
+    void setTwin(tEdge* u){
         this->twin = u;
         u->twin = this;
+    }
+    void setNext(tEdge* u){
+        this->next = u;
+        u->prev = this;
+        u->face = this->face;
     }
 };
 
 struct Face{
     tEdge *edge;
+    Face(tEdge *edge){
+        tEdge *current = edge;
+        do{
+            current->face = this;
+            current = current->next;
+        }while(current != edge);
+    }
 };
 
 struct DCEL{
@@ -54,23 +66,40 @@ DCEU::DCEU(vector<tVertex> vertices){
         tVertex* new_vert = new tVertex(vertices[i]);
         this->vertices.push_back(new_vert);
     }
-    
-    // Create firsts edges
-    tEdge* e0 = new tEdge(this->vertices[0]);
-    tEdge* e1 = new tEdge(this->vertices[1], );
+
+    tEdge* new_edge = NULL;
+    tEdge* new_twin = NULL;
+    tEdge* last_edge = NULL;
+    tEdge* last_twin = NULL;
+    tEdge *first_edge = NULL;
+    tEdge *first_twin = NULL;
+    for(int i=0; i<vertices.size(); i++){
+        new_edge = new tEdge(this->vertices[i]);
+        new_twin = new tEdge(this->vertices[(i+1)%vertices.size()]);
+
+        // Set connections
+        new_edge->setTwin(new_twin);
+        if(last_edge != NULL){
+            last_edge->setNext(new_edge);
+            new_twin->setNext(last_twin);
+        }
+        // Saving first edge and twin   
+        else{ 
+            first_edge = new_edge;
+            first_twin = new_twin;
+        }
+
+        this->edges.push_back(new_edge);
+        this->edges.push_back(new_twin);
+        
+        last_edge = new_edge;
+        last_twin = new_twin;
+    }
+    // Close the polygon
+    last_edge->setNext(first_edge);
+    first_twin->setNext(last_twin);
 
 
-
-
-    tVertex* edge = this->edges[0];
-    this->faces.push_back(new tFace(edge));
-    this->faces.push_back(new tFace(edge->twin));
-}
-
-Face::Face(tEdge *edge){
-    tEdge *current = edge;
-    do{
-        current->face = this;
-        current = current->next;
-    }while(current != edge);
+    this->faces.push_back(first_edge);
+    this->faces.push_back(first_twin);
 }
