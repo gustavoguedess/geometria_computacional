@@ -1,3 +1,7 @@
+#include<math.h>
+#include<vector>
+
+using namespace std;
 
 typedef struct Vertex tVertex;
 typedef struct Edge tEdge;
@@ -6,10 +10,10 @@ typedef struct DCEL tDCEL;
 
 struct Vertex{
     float x,y,z;
-    tEdge *edge;
-
-    float distance(x,y,z){
-        return sqrt(pow(x-this->x,2)+pow(y-this->y,2)+pow(z-this->z,2));
+    vector<tEdge*> edges;
+    Vertex(float x, float y, float z=0):x(x),y(y),z(z){}
+    float distance(float x, float y){
+        return sqrt(pow(x-this->x,2)+pow(y-this->y,2));
     }
 };
 
@@ -19,15 +23,7 @@ struct Edge{
     tEdge* next;
     tEdge* prev;
     tFace* face;
-    Edge(tVertex* origem):origem(origem),twin(NULL),next(NULL)prev(NULL),face(NULL){}
-    Edge(tVertex* origem, tEdge* u){
-        this->Edge(origem);
-        this->next = u->next;
-        this->prev = u;
-        this->face = u->face;
-
-        u->next->prev = u->next = this;
-    }
+    Edge(tVertex* origem):origem(origem),twin(NULL),next(NULL),prev(NULL),face(NULL){}
     void setTwin(tEdge* u){
         this->twin = u;
         u->twin = this;
@@ -61,14 +57,20 @@ struct DCEL{
     vector<tVertex*> vertices;
     vector<tEdge*> edges;
     vector<tFace*> faces;
+    DCEL(vector<tVertex> vertices);
+    
+    tVertex* closest_vertex(float x, float y, float distance_limit=1);
+    tEdge* closest_edge(float x, float y, float distance_limit=1);
+    tFace* closest_face(float x, float y, float distance_limit=1);
+    float* getEdgeCoords();
 };
 
-bool left(tVertex a, tVertex b, tVertex c){
-    return (b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x) > 0;
+bool left(tVertex* a, tVertex* b, tVertex* c){
+    return (b->x-a->x)*(c->y-a->y)-(b->y-a->y)*(c->x-a->x) > 0;
 }
 
-DCEU::DCEU(vector<tVertex> vertices){
-    bool is_clockwise = left(vertices[0],vertices[1],vertices[2]);
+DCEL::DCEL(vector<tVertex> vertices){
+    bool is_clockwise = left(&vertices[0], &vertices[1], &vertices[2]);
     int ini, fim;
     if(is_clockwise) {ini=0;fim=vertices.size()-1;}
     else {ini=vertices.size()-1;fim=0;}
@@ -112,11 +114,11 @@ DCEU::DCEU(vector<tVertex> vertices){
     first_twin->setNext(last_twin);
 
 
-    this->faces.push_back(first_edge);
-    this->faces.push_back(first_twin);
+    this->faces.push_back(new tFace(first_edge));
+    this->faces.push_back(new tFace(first_twin));
 }
 
-tVertex* DCEU::closest_vertex(float x, float y, float distance_limit=1){
+tVertex* DCEL::closest_vertex(float x, float y, float distance_limit){
     tVertex* closest = NULL;
     for(auto vert: this->vertices){
         float distance = vert->distance(x,y);
@@ -128,7 +130,7 @@ tVertex* DCEU::closest_vertex(float x, float y, float distance_limit=1){
     return closest;
 }
 
-tEdge* DCEU::closest_edge(float x, float y, float distance_limit=1){
+tEdge* DCEL::closest_edge(float x, float y, float distance_limit){
     tEdge* closest = NULL;
     for(auto edge: this->edges){
         float distance = edge->distance(x,y);
@@ -140,9 +142,9 @@ tEdge* DCEU::closest_edge(float x, float y, float distance_limit=1){
     return closest;
 }
 
-tFace* DCEU::closest_face(float x, float y, float distance_limit=1){
+tFace* DCEL::closest_face(float x, float y, float distance_limit){
     tFace* closest = NULL;
-    tEdge vert(x,y,0);
+    tVertex* vert = new tVertex(x,y);
     for(auto face: this->faces){
         tEdge* current = face->edge;
         bool all_left = true;
@@ -156,4 +158,17 @@ tFace* DCEU::closest_face(float x, float y, float distance_limit=1){
         }
     }
     return closest;
+}
+
+float* DCEL::getEdgeCoords(){
+    float* coords = new float[this->edges.size()*6];
+    for(int i=0; i<this->edges.size(); i++){
+        coords[i*6] = this->edges[i]->origem->x;
+        coords[i*6+1] = this->edges[i]->origem->y;
+        coords[i*6+2] = this->edges[i]->origem->z;
+        coords[i*6+3] = this->edges[i]->twin->origem->x;
+        coords[i*6+4] = this->edges[i]->twin->origem->y;
+        coords[i*6+5] = this->edges[i]->twin->origem->z;
+    }
+    return coords;
 }
