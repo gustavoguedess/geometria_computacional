@@ -35,6 +35,7 @@ int selected_object = -1;
 void display(void);
 void reshape(int width, int height);
 void keyboard(unsigned char key, int x, int y);
+void enterPressed();
 void mouse(int button, int state, int x, int y);
 void leftButtonPressed(float, float);
 
@@ -55,7 +56,7 @@ float normalize_y(int y, int height){
  * Draws a triangle.
  */
 void display(){
-    glClearColor(0.2, 0.3, 0.3, 1.0);
+    glClearColor(0.956862745, 0.925490196, 0.835294118, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     if(mode == MODE_SKETCH_POLYGON)
@@ -94,18 +95,24 @@ void keyboard(unsigned char key, int x, int y){
     switch (key)
     {
         case ' ':
-            printf("[EVENT] Space pressed.\n");
-            if(mode == MODE_SKETCH_POLYGON){
-                mode = MODE_NONE;
-                dcel = new tDCEL(sketch_vertices);
-                printf("[INFO] DCEL created.\n");
-            }
+            enterPressed();
             break;
         case 27:
         case 'q':
         case 'Q':
             glutLeaveMainLoop();
     }
+}
+
+void enterPressed(){
+    printf("[EVENT] Enter pressed.\n");
+    if(mode == MODE_SKETCH_POLYGON){
+        mode = MODE_NONE;
+        dcel = new tDCEL(sketch_vertices);
+        printf("[INFO] DCEL created.\n");
+    }
+
+    glutPostRedisplay();
 }
 
 /**
