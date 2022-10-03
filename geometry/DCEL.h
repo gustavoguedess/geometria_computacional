@@ -62,7 +62,8 @@ struct DCEL{
     tVertex* closest_vertex(float x, float y, float distance_limit=1);
     tEdge* closest_edge(float x, float y, float distance_limit=1);
     tFace* closest_face(float x, float y, float distance_limit=1);
-    float* getEdgeCoords();
+    vector<float> getVerticesCoords();
+    vector<float> getEdgesCoords();
 };
 
 bool left(tVertex* a, tVertex* b, tVertex* c){
@@ -72,8 +73,8 @@ bool left(tVertex* a, tVertex* b, tVertex* c){
 DCEL::DCEL(vector<tVertex> vertices){
     bool is_clockwise = left(&vertices[0], &vertices[1], &vertices[2]);
     int ini, fim;
-    if(is_clockwise) {ini=0;fim=vertices.size()-1;}
-    else {ini=vertices.size()-1;fim=0;}
+    if(is_clockwise) {ini=0;fim=vertices.size();}
+    else {ini=vertices.size()-1;fim=-1;}
 
     // Create vertices and edges
     for(int i=ini; i!=fim; i+=is_clockwise?1:-1){
@@ -160,15 +161,35 @@ tFace* DCEL::closest_face(float x, float y, float distance_limit){
     return closest;
 }
 
-float* DCEL::getEdgeCoords(){
-    float* coords = new float[this->edges.size()*6];
-    for(int i=0; i<this->edges.size(); i++){
-        coords[i*6] = this->edges[i]->origem->x;
-        coords[i*6+1] = this->edges[i]->origem->y;
-        coords[i*6+2] = this->edges[i]->origem->z;
-        coords[i*6+3] = this->edges[i]->twin->origem->x;
-        coords[i*6+4] = this->edges[i]->twin->origem->y;
-        coords[i*6+5] = this->edges[i]->twin->origem->z;
+vector<float> DCEL::getVerticesCoords(){
+    vector<float> coords;
+    for(auto vert: this->vertices){
+        coords.push_back(vert->x);
+        coords.push_back(vert->y);
+        coords.push_back(vert->z);
     }
     return coords;
+}
+
+vector<float> DCEL::getEdgesCoords(){
+    vector<float> coords;
+    for(auto edge: this->edges){
+        coords.push_back(edge->origem->x);
+        coords.push_back(edge->origem->y);
+        coords.push_back(edge->origem->z);
+        coords.push_back(edge->twin->origem->x);
+        coords.push_back(edge->twin->origem->y);
+        coords.push_back(edge->twin->origem->z);
+    }
+    return coords;
+}
+
+float* toFloatArray(std::vector<tVertex> v){
+    float *a = new float[v.size()*3];
+    for(int i=0; i<v.size(); i++){
+        a[i*3] = v[i].x;
+        a[i*3+1] = v[i].y;
+        a[i*3+2] = v[i].z;
+    }
+    return a;
 }

@@ -10,7 +10,7 @@
 #include <iostream>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
-
+#include <vector>
 
 /** 
  * Create program.
@@ -23,3 +23,6 @@
  */
 int createShaderProgram(const char *, const char *);
 
+float* toFloatArray(std::vector<float> v);
+float normalize_x(int x, int width);
+float normalize_y(int y, int height);

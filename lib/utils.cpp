@@ -72,3 +72,11 @@ int createShaderProgram(const char *vertex_code, const char *fragment_code)
 
     return program;
 }
+
+
+float normalize_x(int x, int width){
+    return ((float)x/width) * 2.0f - 1.0f;
+}
+float normalize_y(int y, int height){
+    return ((float)y/height) * 2.0f + 1.0f;
+}
