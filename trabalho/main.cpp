@@ -12,7 +12,6 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include "board.h"
-#include "shaders.h"
 
 /* Globals */
 /** Window width. */
@@ -22,12 +21,33 @@ int win_height = 600;
 /** DCEL. */
 
 
+/** STATE MODES **/
+#define MODE_NONE 0
+#define MODE_SKETCH_POLYGON 1
+#define MODE_SELECTED_VERTEX 2
+#define MODE_SELECTED_EDGE 3
+#define MODE_SELECTED_FACE 4
+
+int mode = MODE_SKETCH_POLYGON;
+int selected_object = -1;
+
+
 void display(void);
 void reshape(int width, int height);
 void keyboard(unsigned char key, int x, int y);
 void mouse(int button, int state, int x, int y);
-void init(void);
 void leftButtonPressed(float, float);
+
+/**
+ * Normalization functions. 
+ */
+float normalize_x(int x, int width){
+    return ((float)x/(float)width) * 2.0f - 1.0f;
+}
+float normalize_y(int y, int height){
+    return -((float)y/(float)height) * 2.0f + 1.0f;
+}
+
 
 /** 
  * Drawing function.
@@ -38,17 +58,10 @@ void display(){
     glClearColor(0.2, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if(mode == MODE_SKETCH_POLYGON){
+    if(mode == MODE_SKETCH_POLYGON)
+    {
         drawSketchPolygon();
     }
-    
-
-    glUseProgram(program[0]);
-    glBindVertexArray(VAO[BUFFER_DCEL_VERTICES]);
-    glDrawArrays(GL_POINTS, 0, 0);
-    glBindVertexArray(VAO[BUFFER_DCEL_EDGES]);
-    glDrawArrays(GL_LINES, 0, 0);
-    glBindVertexArray(0);
 
     glutSwapBuffers();
 }
@@ -81,10 +94,11 @@ void keyboard(unsigned char key, int x, int y){
     switch (key)
     {
         case ' ':
-            printf(">Space pressed.\n");
+            printf("[EVENT] Space pressed.\n");
             if(mode == MODE_SKETCH_POLYGON){
                 mode = MODE_NONE;
                 dcel = new tDCEL(sketch_vertices);
+                printf("[INFO] DCEL created.\n");
             }
             break;
         case 27:
@@ -109,15 +123,17 @@ void mouse(int button, int state, int x, int y){
     switch (button)
     {
         case GLUT_LEFT_BUTTON:
-            printf(">Left button pressed.\n");
+            printf("[EVENT] Left button pressed.\n");
+            // Add vertex to sketch polygon
             leftButtonPressed(
                 normalize_x(x, win_width), 
                 normalize_y(y, win_height)
             );
+            // Redraw
             glutPostRedisplay();
             break;
         case GLUT_RIGHT_BUTTON:
-            printf(">Right button pressed.\n");
+            printf("[EVENT] Right button pressed.\n");
             break;
         default:
             break;
@@ -127,7 +143,7 @@ void leftButtonPressed(float x, float y){
     switch (mode)
     {
         case MODE_SKETCH_POLYGON:
-            printf("> Inserting vertex (%f, %f)\n", x, y);
+            printf("[INFO] Inserting vertex (%f, %f)\n", x, y);
             insertSketchVertex(x, y);
             break;
         
@@ -135,26 +151,6 @@ void leftButtonPressed(float x, float y){
             break;
     }
 }
-/**
- * Initialization function.
- */
-void init(){
-
-    // Generate VAOs and VBOs
-    glGenVertexArrays(BUFFER_COUNT, VAO);
-    glGenBuffers(BUFFER_COUNT, VBO);
-
-    // Config Vertices
-    //TODO: Create a function to do this
-    for(int buffer=0; buffer<BUFFER_COUNT; buffer++){
-        glBindVertexArray(VAO[buffer]);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[buffer]);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);    
-    }
-
-    glEnableVertexAttribArray(0);
-}
-
 
 int main(int argc, char **argv)
 {
@@ -166,13 +162,13 @@ int main(int argc, char **argv)
     glutCreateWindow("DCEL - Guedes");
     glewInit();
 
-    initShaders(program);
+    initData();
+    initShaders();
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutMouseFunc(mouse);
-    init();
 
     glutMainLoop();
 }
