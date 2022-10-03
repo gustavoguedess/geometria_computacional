@@ -82,7 +82,7 @@ void keyboard(unsigned char key, int x, int y)
         {
                 /* Escape key.*/
                 case 27:
-                        glutLeaveMainLoo();
+                        glutLeaveMainLoop();
                 /* q key. */
                 case 'q':
                 case 'Q':
