@@ -31,7 +31,6 @@ int win_height = 600;
 int mode = MODE_SKETCH_POLYGON;
 int selected_object = -1;
 
-
 void display(void);
 void reshape(int width, int height);
 void keyboard(unsigned char key, int x, int y);
@@ -62,6 +61,10 @@ void display(){
     if(mode == MODE_SKETCH_POLYGON)
     {
         drawSketchPolygon();
+    }
+    else
+    {
+        drawDCEL();
     }
 
     glutSwapBuffers();
@@ -108,7 +111,7 @@ void enterPressed(){
     printf("[EVENT] Enter pressed.\n");
     if(mode == MODE_SKETCH_POLYGON){
         mode = MODE_NONE;
-        dcel = new tDCEL(sketch_vertices);
+        createDCEL();
         printf("[INFO] DCEL created.\n");
     }
 
@@ -147,13 +150,18 @@ void mouse(int button, int state, int x, int y){
     }
 }
 void leftButtonPressed(float x, float y){
-    switch (mode)
-    {
-        case MODE_SKETCH_POLYGON:
+    if(mode == MODE_SKETCH_POLYGON){
             printf("[INFO] Inserting vertex (%f, %f)\n", x, y);
             insertSketchVertex(x, y);
+            return;
+    }
+    int selected_object = checkClosestObject(x, y);
+    
+    switch(mode){
+        case MODE_NONE:
             break;
-        
+
+
         default:
             break;
     }

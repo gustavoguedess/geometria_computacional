@@ -22,10 +22,11 @@ const char *vertex_code = "\n"
 const char *fragment_code = "\n"
 "#version 330 core\n"
 "out vec4 FragColor;\n"
+"uniform vec4 color;\n"
 "\n"
 "void main()\n"
 "{\n"
-"    FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
+"    FragColor = color;\n"
 "}\0";
 
 /** 

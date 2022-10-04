@@ -18,12 +18,12 @@ struct Vertex{
 };
 
 struct Edge{
-    tVertex* origem;
+    tVertex* origin;
     tEdge* twin;
     tEdge* next;
     tEdge* prev;
     tFace* face;
-    Edge(tVertex* origem):origem(origem),twin(NULL),next(NULL),prev(NULL),face(NULL){}
+    Edge(tVertex* origin):origin(origin),twin(NULL),next(NULL),prev(NULL),face(NULL){}
     void setTwin(tEdge* u){
         this->twin = u;
         u->twin = this;
@@ -34,10 +34,10 @@ struct Edge{
         u->face = this->face;
     }
     float distance(float x, float y){
-        float x1 = this->origem->x;
-        float y1 = this->origem->y;
-        float x2 = this->twin->origem->x;
-        float y2 = this->twin->origem->y;
+        float x1 = this->origin->x;
+        float y1 = this->origin->y;
+        float x2 = this->twin->origin->x;
+        float y2 = this->twin->origin->y;
         return abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/sqrt(pow(y2-y1,2)+pow(x2-x1,2));
     }
 };
@@ -150,7 +150,7 @@ tFace* DCEL::closest_face(float x, float y, float distance_limit){
         tEdge* current = face->edge;
         bool all_left = true;
         do{
-            if(!left(current->origem, current->next->origem,vert))
+            if(!left(current->origin, current->next->origin,vert))
                 all_left = false;
         }while(current != face->edge && all_left);
         if(all_left){
@@ -174,22 +174,12 @@ vector<float> DCEL::getVerticesCoords(){
 vector<float> DCEL::getEdgesCoords(){
     vector<float> coords;
     for(auto edge: this->edges){
-        coords.push_back(edge->origem->x);
-        coords.push_back(edge->origem->y);
-        coords.push_back(edge->origem->z);
-        coords.push_back(edge->twin->origem->x);
-        coords.push_back(edge->twin->origem->y);
-        coords.push_back(edge->twin->origem->z);
+        coords.push_back(edge->origin->x);
+        coords.push_back(edge->origin->y);
+        coords.push_back(edge->origin->z);
+        coords.push_back(edge->twin->origin->x);
+        coords.push_back(edge->twin->origin->y);
+        coords.push_back(edge->twin->origin->z);
     }
     return coords;
-}
-
-float* toFloatArray(std::vector<tVertex> v){
-    float *a = new float[v.size()*3];
-    for(int i=0; i<v.size(); i++){
-        a[i*3] = v[i].x;
-        a[i*3+1] = v[i].y;
-        a[i*3+2] = v[i].z;
-    }
-    return a;
 }
