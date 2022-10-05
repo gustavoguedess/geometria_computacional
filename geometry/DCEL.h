@@ -176,30 +176,11 @@ tEdge* DCEL::getClosestEdge(float x, float y, float distance_limit){
 }
 
 tFace* DCEL::getClosestFace(float x, float y){
-    tFace* closest = NULL;
+    tEdge* closest_edge = this->getClosestEdge(x,y);
     tVertex* vertex = new tVertex(x,y);
-    for(auto face: this->faces){
-        tEdge* current = face->edge;
-        bool inside = true;
-        do{
-            tEdge* aux = new tEdge(vertex);
-            tEdge* aux_twin = new tEdge(current->origin);
-            aux->setTwin(aux_twin);
-            for(auto edge: this->edges){
-                if(edge->intersect(aux)){
-                    inside = false;
-                    break;
-                }
-            }
-            current = current->next;
-        }while(current != face->edge);
-        if(inside) {
-            closest = face;
-            break;
-        }
-    }
-    printf("[DEBUG] Face: (%f,%f)\n", closest->edge->origin->x, closest->edge->origin->y);
-    return closest;
+    if (left(closest_edge->origin, closest_edge->twin->origin, vertex))
+        return closest_edge->face;
+    return closest_edge->twin->face;
 }
 
 // *****************************************************************

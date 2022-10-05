@@ -170,7 +170,7 @@ void drawSelectedEdge(){
     glBindVertexArray(0);
 }
 
-void drawFace(){
+void drawSelectedFace(){
     // Draw
     glUseProgram(program);
     glUniform4f(color, COLOR_GREEN);

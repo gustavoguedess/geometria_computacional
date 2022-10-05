@@ -101,6 +101,10 @@ void display(){
     {
         drawSelectedEdge();
     }
+    else if (mode == MODE_SELECTED_FACE)
+    {
+        drawSelectedFace();
+    }
 
     glutSwapBuffers();
 }
@@ -229,8 +233,11 @@ void leftButtonPressed(float x, float y){
         }
     }
     else{
+        printf("[INFO] Closest face: (%f, %f)\n", closest_face->edge->origin->x, closest_face->edge->origin->y);
         if(mode == MODE_SELECTED_FACE && selected_face == closest_face){
-            // TODO Next Edge
+            printf("[INFO] Next Orbit Face\n");
+            selected_face->nextOrbitEdge();
+            updateSelectedFace(closest_face);
         }
         else{
             mode = MODE_SELECTED_FACE;
