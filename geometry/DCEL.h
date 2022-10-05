@@ -1,5 +1,6 @@
 #include<math.h>
 #include<vector>
+#include<stdio.h>
 
 using namespace std;
 
@@ -7,6 +8,12 @@ typedef struct Vertex tVertex;
 typedef struct Edge tEdge;
 typedef struct Face tFace;
 typedef struct DCEL tDCEL;
+
+bool left(tVertex* a, tVertex* b, tVertex* c);
+
+// *****************************************************************
+//                          DCEL STRUCTURES
+// *****************************************************************
 
 struct Vertex{
     float x,y,z;
@@ -41,17 +48,26 @@ struct Edge{
         float y2 = this->twin->origin->y;
         return abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/sqrt(pow(y2-y1,2)+pow(x2-x1,2));
     }
+    bool intersect(tEdge* u){
+        return left(this->origin, this->twin->origin, u->origin) 
+                != left(this->origin, this->twin->origin, u->twin->origin) 
+            && left(u->origin, u->twin->origin, this->origin) 
+                != left(u->origin, u->twin->origin, this->twin->origin);
+    }
 };
 
 struct Face{
     tEdge *edge;
     Face(tEdge *edge){
+        this->edge = edge;
         tEdge *current = edge;
         do{
             current->face = this;
             current = current->next;
         }while(current != edge);
     }
+    void nextOrbitEdge();
+    vector<tEdge*> getEdges();
 };
 
 struct DCEL{
@@ -62,14 +78,12 @@ struct DCEL{
     
     tVertex* getClosestVertex(float x, float y, float distance_limit=1);
     tEdge* getClosestEdge(float x, float y, float distance_limit=1);
+    tFace* getClosestFace(float x, float y);
     vector<float> getVerticesCoords();
     vector<float> getEdgesCoords();
 };
 
-bool left(tVertex* a, tVertex* b, tVertex* c){
-    return (b->x-a->x)*(c->y-a->y)-(b->y-a->y)*(c->x-a->x) > 0;
-}
-
+// *****************************************************************
 DCEL::DCEL(vector<tVertex> vertices){
     bool is_clockwise = left(&vertices[0], &vertices[1], &vertices[2]);
     int ini, fim;
@@ -119,6 +133,24 @@ DCEL::DCEL(vector<tVertex> vertices){
     this->faces.push_back(new tFace(first_twin));
 }
 
+// *****************************************************************
+//                          GEOMETRY FUNCTIONS
+// *****************************************************************
+
+void Vertex::nextOrbitEdge(){
+    do{
+        this->edge = this->edge->next;
+    }while(this->edge->twin->origin != this);
+    this->edge = this->edge->twin;
+}
+
+void Face::nextOrbitEdge(){
+    this->edge = this->edge->next;
+}
+
+// *****************************************************************
+//                          DCEL CLOSEST FUNCTIONS
+// *****************************************************************
 tVertex* DCEL::getClosestVertex(float x, float y, float distance_limit){
     tVertex* closest = NULL;
     for(auto vert: this->vertices){
@@ -143,6 +175,37 @@ tEdge* DCEL::getClosestEdge(float x, float y, float distance_limit){
     return closest;
 }
 
+tFace* DCEL::getClosestFace(float x, float y){
+    tFace* closest = NULL;
+    tVertex* vertex = new tVertex(x,y);
+    for(auto face: this->faces){
+        tEdge* current = face->edge;
+        bool inside = true;
+        do{
+            tEdge* aux = new tEdge(vertex);
+            tEdge* aux_twin = new tEdge(current->origin);
+            aux->setTwin(aux_twin);
+            for(auto edge: this->edges){
+                if(edge->intersect(aux)){
+                    inside = false;
+                    break;
+                }
+            }
+            current = current->next;
+        }while(current != face->edge);
+        if(inside) {
+            closest = face;
+            break;
+        }
+    }
+    printf("[DEBUG] Face: (%f,%f)\n", closest->edge->origin->x, closest->edge->origin->y);
+    return closest;
+}
+
+// *****************************************************************
+//                          DCEL GET COORDS
+// *****************************************************************
+
 vector<float> DCEL::getVerticesCoords(){
     vector<float> coords;
     for(auto vert: this->vertices){
@@ -166,9 +229,20 @@ vector<float> DCEL::getEdgesCoords(){
     return coords;
 }
 
-void Vertex::nextOrbitEdge(){
+vector<tEdge*> Face::getEdges(){
+    vector<tEdge*> edges;
+    tEdge* current = this->edge;
     do{
-        this->edge = this->edge->next;
-    }while(this->edge->twin->origin != this);
-    this->edge = this->edge->twin;
+        edges.push_back(current);
+        current = current->next;
+    }while(current != this->edge);
+    return edges;
+}
+
+//*******************************************************************
+//                      AUXILIAR FUNCTIONS
+//*******************************************************************
+
+bool left(tVertex* a, tVertex* b, tVertex* c){
+    return (b->x-a->x)*(c->y-a->y)-(b->y-a->y)*(c->x-a->x) > 0;
 }

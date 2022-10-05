@@ -42,6 +42,7 @@ int selected_object = -1;
 
 tVertex* selected_vertex = NULL;
 tEdge* selected_edge = NULL;
+tFace* selected_face = NULL;
 vector<tVertex*> selected_vertices;
 
 tDCEL* dcel;
@@ -196,6 +197,7 @@ void leftButtonPressed(float x, float y){
     
     tVertex* closest_vertex = dcel->getClosestVertex(x, y, DISTANCE_THRESHOLD);
     tEdge* closest_edge = dcel->getClosestEdge(x, y, DISTANCE_THRESHOLD);
+    tFace* closest_face = dcel->getClosestFace(x, y);
     
     if(closest_vertex != NULL){
         if(mode == MODE_SELECTED_VERTEX && selected_vertex == closest_vertex){
@@ -218,12 +220,22 @@ void leftButtonPressed(float x, float y){
     else if(closest_edge != NULL){
         printf("[INFO] Closest edge: (%f, %f) -> (%f, %f)\n", closest_edge->origin->x, closest_edge->origin->y, closest_edge->twin->origin->x, closest_edge->twin->origin->y);
         if(mode == MODE_SELECTED_EDGE && selected_edge == closest_edge){
-            // TODO Criar vertice
+            // TODO Create new vertex
         }
         else{
             mode = MODE_SELECTED_EDGE;
             selected_edge = closest_edge;
             updateSelectedEdge(closest_edge);
+        }
+    }
+    else{
+        if(mode == MODE_SELECTED_FACE && selected_face == closest_face){
+            // TODO Next Edge
+        }
+        else{
+            mode = MODE_SELECTED_FACE;
+            selected_face = closest_face;
+            updateSelectedFace(closest_face);
         }
     }
 

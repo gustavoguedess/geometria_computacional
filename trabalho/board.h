@@ -12,7 +12,8 @@
 #define BUFFER_DCEL_VISUALIZATION_ORBIT 4
 #define BUFFER_DCEL_VISUALIZATION_EDGE 5
 #define BUFFER_DCEL_VISUALIZATION_FACE 6
-#define BUFFER_COUNT 7
+#define BUFFER_DCEL_VISUALIZATION_FACE_EDGE 7
+#define BUFFER_COUNT 8
 
 /** Program variable. */
 int program;
@@ -45,6 +46,7 @@ float* toFloatArrayLines(vector<tEdge*> edges);
 int sketch_polygon_size = 0;
 int dcel_vertices_size = 0;
 int dcel_edges_size = 0;
+int face_edges_size = 0;
 
 //*********************************************
 //             UPDATE FUNCTIONS
@@ -85,6 +87,25 @@ void updateSelectedEdge(tEdge* edge){
     glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_VISUALIZATION_EDGE]);
     glBufferData(GL_ARRAY_BUFFER, 3 * 2 * sizeof(float), vertices, GL_STATIC_DRAW);
     glBindVertexArray(0);  
+}
+
+void updateSelectedFace(tFace* face){
+    vector<tEdge*> edges = face->getEdges();
+    float* vertices = toFloatArrayLines(edges);
+    
+    // Put the edges in the buffer
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_FACE]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_VISUALIZATION_FACE]);
+    glBufferData(GL_ARRAY_BUFFER, 3 * 2 * edges.size() * sizeof(float), vertices, GL_STATIC_DRAW);
+    glBindVertexArray(0);
+    face_edges_size = edges.size();
+
+    float* first_edge = toFloatArrayLines({face->edge});
+    // Put the first edge in the buffer
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_FACE_EDGE]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_VISUALIZATION_FACE_EDGE]);
+    glBufferData(GL_ARRAY_BUFFER, 3 * 2 * sizeof(float), first_edge, GL_STATIC_DRAW);
+    glBindVertexArray(0);
 }
 
 void updateDCEL(tDCEL* dcel){
@@ -149,6 +170,22 @@ void drawSelectedEdge(){
     glBindVertexArray(0);
 }
 
+void drawFace(){
+    // Draw
+    glUseProgram(program);
+    glUniform4f(color, COLOR_GREEN);
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_FACE]);
+    glDrawArrays(GL_LINES, 0, 2 * face_edges_size);
+    glBindVertexArray(0);
+
+    // Draw
+    glUseProgram(program);
+    glUniform4f(color, COLOR_ORANGE);
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_FACE_EDGE]);
+    glDrawArrays(GL_LINES, 0, 2);
+    
+    glBindVertexArray(0);
+}
 
 void drawDCEL(){
     // Draw
