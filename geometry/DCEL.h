@@ -62,7 +62,6 @@ struct DCEL{
     
     tVertex* getClosestVertex(float x, float y, float distance_limit=1);
     tEdge* getClosestEdge(float x, float y, float distance_limit=1);
-    tFace* closest_face(float x, float y, float distance_limit=1);
     vector<float> getVerticesCoords();
     vector<float> getEdgesCoords();
 };
@@ -140,24 +139,6 @@ tEdge* DCEL::getClosestEdge(float x, float y, float distance_limit){
             distance_limit = distance;
             closest = edge;
         } 
-    }
-    return closest;
-}
-
-tFace* DCEL::closest_face(float x, float y, float distance_limit){
-    tFace* closest = NULL;
-    tVertex* vert = new tVertex(x,y);
-    for(auto face: this->faces){
-        tEdge* current = face->edge;
-        bool all_left = true;
-        do{
-            if(!left(current->origin, current->next->origin,vert))
-                all_left = false;
-        }while(current != face->edge && all_left);
-        if(all_left){
-            closest = face;
-            break;
-        }
     }
     return closest;
 }
