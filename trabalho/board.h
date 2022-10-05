@@ -29,13 +29,11 @@ unsigned int VBO[BUFFER_COUNT];
 #define COLOR_GREEN 0.0f, 0.5f, 0.0f, 1.0f
 #define COLOR_BLUE 0.0f, 0.0f, 1.0f, 1.0f
 #define COLOR_YELLOW 1.0f, 1.0f, 0.0f, 1.0f
+#define COLOR_ORANGE 1.0f, 0.5f, 0.0f, 1.0f
 
-
-tDCEL* dcel;
-vector<tVertex> sketch_vertices;
-
+/** FUNCTIONS **/
 void insertSketchVertex(float, float);
-void updateSketchPolygon();
+void updateSketchPolygon(vector<tVertex> sketch_vertices);
 void drawSketchPolygon();
 void initData();
 void initShaders();
@@ -44,14 +42,15 @@ float* toFloatArray(vector<tVertex> vertices);
 float* toFloatArrayPoints(vector<tVertex*> vertices);
 float* toFloatArrayLines(vector<tEdge*> edges);
 
-/*******************************/
+int sketch_polygon_size = 0;
+int dcel_vertices_size = 0;
+int dcel_edges_size = 0;
 
-void insertSketchVertex(float x, float y){
-    sketch_vertices.emplace_back(x, y);
-    updateSketchPolygon();
-}
+//*********************************************
+//             UPDATE FUNCTIONS
+//*********************************************
 
-void updateSketchPolygon(){
+void updateSketchPolygon(vector<tVertex> sketch_vertices){
     float* vertices = toFloatArray(sketch_vertices);
 
     // Put the vertices in the buffer
@@ -59,20 +58,36 @@ void updateSketchPolygon(){
     glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_SKETCH_POLYGON]);
     glBufferData(GL_ARRAY_BUFFER, 3 * sketch_vertices.size() * sizeof(float), vertices, GL_STATIC_DRAW);
     glBindVertexArray(0);  
+    sketch_polygon_size = sketch_vertices.size();
 }
+void updateSelectedVertex(tVertex* vertex){
+    float* vertices = toFloatArrayPoints({vertex});
 
-void drawSketchPolygon(){
-    // Draw
-    glUseProgram(program);
-    int color_location = glGetUniformLocation(program, "color");
-    glUniform4f(color_location, COLOR_GRAY);
-    glBindVertexArray(VAO[BUFFER_SKETCH_POLYGON]);
-    glDrawArrays(GL_LINE_LOOP, 0, sketch_vertices.size());
-    
+    // Put the vertices in the buffer
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_VERTEX]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_VISUALIZATION_VERTEX]);
+    glBufferData(GL_ARRAY_BUFFER, 3 * 1 * sizeof(float), vertices, GL_STATIC_DRAW);
+    glBindVertexArray(0);  
+
+    float* orbit = toFloatArrayLines({vertex->edge});
+    // Put the Orbit in the buffer
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_ORBIT]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_VISUALIZATION_ORBIT]);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), orbit, GL_STATIC_DRAW);
     glBindVertexArray(0);
+
+}
+void updateSelectedEdge(tEdge* edge){
+    float* vertices = toFloatArrayLines({edge});
+
+    // Put the vertices in the buffer
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_EDGE]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_VISUALIZATION_EDGE]);
+    glBufferData(GL_ARRAY_BUFFER, 3 * 2 * sizeof(float), vertices, GL_STATIC_DRAW);
+    glBindVertexArray(0);  
 }
 
-void updateDCEL(){
+void updateDCEL(tDCEL* dcel){
     float* vertices = toFloatArrayPoints(dcel->vertices);
     float* edges = toFloatArrayLines(dcel->edges);
     
@@ -87,6 +102,51 @@ void updateDCEL(){
     glBindBuffer(GL_ARRAY_BUFFER, VBO[BUFFER_DCEL_EDGES]);
     glBufferData(GL_ARRAY_BUFFER, 6 * dcel->edges.size() * sizeof(float), edges, GL_STATIC_DRAW);
     glBindVertexArray(0);
+
+    dcel_vertices_size = dcel->vertices.size();
+    dcel_edges_size = dcel->edges.size();
+}
+
+
+//******************************************
+//              DRAWING FUNCTIONS
+//******************************************
+
+void drawSketchPolygon(){
+    // Draw
+    glUseProgram(program);
+    glUniform4f(color, COLOR_GRAY);
+    glBindVertexArray(VAO[BUFFER_SKETCH_POLYGON]);
+    glDrawArrays(GL_LINE_LOOP, 0, sketch_polygon_size);
+    
+    glBindVertexArray(0);
+}
+
+void drawSelectedVertex(){
+    // Draw
+    glUseProgram(program);
+    glUniform4f(color, COLOR_RED);
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_VERTEX]);
+    glDrawArrays(GL_POINTS, 0, 1);
+    glBindVertexArray(0);
+
+    // Draw
+    glUseProgram(program);
+    glUniform4f(color, COLOR_ORANGE);
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_ORBIT]);
+    glDrawArrays(GL_LINES, 0, 2);
+    glBindVertexArray(0);
+}
+
+void drawSelectedEdge(){
+    // Draw
+    glUseProgram(program);
+    int color_location = glGetUniformLocation(program, "color");
+    glUniform4f(color_location, COLOR_RED);
+    glBindVertexArray(VAO[BUFFER_DCEL_VISUALIZATION_EDGE]);
+    glDrawArrays(GL_LINES, 0, 2);
+    
+    glBindVertexArray(0);
 }
 
 
@@ -97,23 +157,19 @@ void drawDCEL(){
     glUniform4f(color, COLOR_BLACK);
     glLineWidth(3.0f);
     glBindVertexArray(VAO[BUFFER_DCEL_EDGES]);
-    glDrawArrays(GL_LINES, 0, dcel->edges.size() * 2);
+    glDrawArrays(GL_LINES, 0, dcel_edges_size * 2);
     glBindVertexArray(0);
 
     glUniform4f(color, COLOR_GREEN);
     glPointSize(9.0f);
     glBindVertexArray(VAO[BUFFER_DCEL_VERTICES]);
-    glDrawArrays(GL_POINTS, 0, dcel->vertices.size());
+    glDrawArrays(GL_POINTS, 0, dcel_vertices_size);
 
 }
 
-void createDCEL(){
-    dcel = new tDCEL(sketch_vertices);
-    updateDCEL();
-}
-/**
- * Initialization function.
- */
+//******************************************************************
+//              INITIALIZATION FUNCTIONS
+//******************************************************************
 void initData(){
     // Generate VAOs and VBOs
     glGenVertexArrays(BUFFER_COUNT, VAO);
@@ -126,8 +182,7 @@ void initData(){
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
     }
-
-    updateSketchPolygon();
+    glBindVertexArray(0);
 }
 
 /* INIT SHADERS */

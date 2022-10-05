@@ -10,11 +10,12 @@ typedef struct DCEL tDCEL;
 
 struct Vertex{
     float x,y,z;
-    vector<tEdge*> edges;
-    Vertex(float x, float y, float z=0):x(x),y(y),z(z){}
+    tEdge* edge;
+    Vertex(float x, float y, float z=0):x(x),y(y),z(z),edge(NULL){}
     float distance(float x, float y){
         return sqrt(pow(x-this->x,2)+pow(y-this->y,2));
     }
+    void nextOrbitEdge();
 };
 
 struct Edge{
@@ -23,7 +24,7 @@ struct Edge{
     tEdge* next;
     tEdge* prev;
     tFace* face;
-    Edge(tVertex* origin):origin(origin),twin(NULL),next(NULL),prev(NULL),face(NULL){}
+    Edge(tVertex* origin):origin(origin),twin(NULL),next(NULL),prev(NULL),face(NULL){this->origin->edge = this;}
     void setTwin(tEdge* u){
         this->twin = u;
         u->twin = this;
@@ -59,8 +60,8 @@ struct DCEL{
     vector<tFace*> faces;
     DCEL(vector<tVertex> vertices);
     
-    tVertex* closest_vertex(float x, float y, float distance_limit=1);
-    tEdge* closest_edge(float x, float y, float distance_limit=1);
+    tVertex* getClosestVertex(float x, float y, float distance_limit=1);
+    tEdge* getClosestEdge(float x, float y, float distance_limit=1);
     tFace* closest_face(float x, float y, float distance_limit=1);
     vector<float> getVerticesCoords();
     vector<float> getEdgesCoords();
@@ -119,7 +120,7 @@ DCEL::DCEL(vector<tVertex> vertices){
     this->faces.push_back(new tFace(first_twin));
 }
 
-tVertex* DCEL::closest_vertex(float x, float y, float distance_limit){
+tVertex* DCEL::getClosestVertex(float x, float y, float distance_limit){
     tVertex* closest = NULL;
     for(auto vert: this->vertices){
         float distance = vert->distance(x,y);
@@ -131,7 +132,7 @@ tVertex* DCEL::closest_vertex(float x, float y, float distance_limit){
     return closest;
 }
 
-tEdge* DCEL::closest_edge(float x, float y, float distance_limit){
+tEdge* DCEL::getClosestEdge(float x, float y, float distance_limit){
     tEdge* closest = NULL;
     for(auto edge: this->edges){
         float distance = edge->distance(x,y);
@@ -182,4 +183,11 @@ vector<float> DCEL::getEdgesCoords(){
         coords.push_back(edge->twin->origin->z);
     }
     return coords;
+}
+
+void Vertex::nextOrbitEdge(){
+    do{
+        this->edge = this->edge->next;
+    }while(this->edge->twin->origin != this);
+    this->edge = this->edge->twin;
 }

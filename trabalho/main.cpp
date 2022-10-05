@@ -12,6 +12,7 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include "board.h"
+// #include "../geometry/DCEL.h"
 
 /* Globals */
 /** Window width. */
@@ -31,16 +32,34 @@ int win_height = 600;
 int mode = MODE_SKETCH_POLYGON;
 int selected_object = -1;
 
+
+/** STATE MODES **/
+#define DISTANCE_THRESHOLD 0.05
+#define CLOSEST_NONE -1
+#define CLOSEST_VERTEX 0
+#define CLOSEST_EDGE 1
+#define CLOSEST_FACE 2
+
+tVertex* selected_vertex = NULL;
+tEdge* selected_edge = NULL;
+vector<tVertex*> selected_vertices;
+
+tDCEL* dcel;
+vector<tVertex> sketch_vertices;
+
+/********************************
+    *                           *
+    *        FUNCTIONS          *
+    *                           *
+    ********************************/
 void display(void);
 void reshape(int width, int height);
 void keyboard(unsigned char key, int x, int y);
-void enterPressed();
+void spacePressed();
 void mouse(int button, int state, int x, int y);
 void leftButtonPressed(float, float);
 
-/**
- * Normalization functions. 
- */
+/************* Sketch Polygon functions ***************/
 float normalize_x(int x, int width){
     return ((float)x/(float)width) * 2.0f - 1.0f;
 }
@@ -48,6 +67,12 @@ float normalize_y(int y, int height){
     return -((float)y/(float)height) * 2.0f + 1.0f;
 }
 
+void insertSketchVertex(float x, float y){
+    sketch_vertices.emplace_back(x, y);
+    updateSketchPolygon(sketch_vertices);
+}
+
+/*******************************/
 
 /** 
  * Drawing function.
@@ -65,6 +90,15 @@ void display(){
     else
     {
         drawDCEL();
+    }
+
+    if (mode == MODE_SELECTED_VERTEX)
+    {
+        drawSelectedVertex();
+    }
+    else if (mode == MODE_SELECTED_EDGE)
+    {
+        drawSelectedEdge();
     }
 
     glutSwapBuffers();
@@ -98,7 +132,7 @@ void keyboard(unsigned char key, int x, int y){
     switch (key)
     {
         case ' ':
-            enterPressed();
+            spacePressed();
             break;
         case 27:
         case 'q':
@@ -107,12 +141,16 @@ void keyboard(unsigned char key, int x, int y){
     }
 }
 
-void enterPressed(){
+void spacePressed(){
     printf("[EVENT] Enter pressed.\n");
     if(mode == MODE_SKETCH_POLYGON){
         mode = MODE_NONE;
-        createDCEL();
+        dcel = new tDCEL(sketch_vertices);
+        updateDCEL(dcel);
         printf("[INFO] DCEL created.\n");
+    }
+    else{
+        mode = MODE_NONE;
     }
 
     glutPostRedisplay();
@@ -155,16 +193,40 @@ void leftButtonPressed(float x, float y){
             insertSketchVertex(x, y);
             return;
     }
-    int selected_object = checkClosestObject(x, y);
     
-    switch(mode){
-        case MODE_NONE:
-            break;
-
-
-        default:
-            break;
+    tVertex* closest_vertex = dcel->getClosestVertex(x, y, DISTANCE_THRESHOLD);
+    tEdge* closest_edge = dcel->getClosestEdge(x, y, DISTANCE_THRESHOLD);
+    
+    if(closest_vertex != NULL){
+        if(mode == MODE_SELECTED_VERTEX && selected_vertex == closest_vertex){
+            selected_vertex->nextOrbitEdge();
+            updateSelectedVertex(closest_vertex);
+            printf("[INFO] Selected vertex orbit changed.\n");
+        }
+        if(mode == MODE_SELECTED_VERTEX && selected_vertex != closest_vertex){
+            // TODO Create new edge
+            mode = MODE_NONE;
+            printf("[INFO] Edge created.\n");
+        }
+        else{
+            mode = MODE_SELECTED_VERTEX;
+            selected_vertex = closest_vertex;
+            updateSelectedVertex(closest_vertex);
+            printf("[INFO] Closest vertex: (%f, %f)\n", closest_vertex->x, closest_vertex->y);
+        }
     }
+    else if(closest_edge != NULL){
+        printf("[INFO] Closest edge: (%f, %f) -> (%f, %f)\n", closest_edge->origin->x, closest_edge->origin->y, closest_edge->twin->origin->x, closest_edge->twin->origin->y);
+        if(mode == MODE_SELECTED_EDGE && selected_edge == closest_edge){
+            // TODO Criar vertice
+        }
+        else{
+            mode = MODE_SELECTED_EDGE;
+            selected_edge = closest_edge;
+            updateSelectedEdge(closest_edge);
+        }
+    }
+
 }
 
 int main(int argc, char **argv)
