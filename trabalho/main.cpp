@@ -212,7 +212,11 @@ void leftButtonPressed(float x, float y){
         if(mode == MODE_SELECTED_VERTEX && selected_vertex != closest_vertex){
             // TODO Create new edge
             mode = MODE_NONE;
+
+            dcel->insertEdge(selected_vertex, closest_vertex);
+            updateDCEL(dcel);
             printf("[INFO] Edge created.\n");
+
         }
         else{
             mode = MODE_SELECTED_VERTEX;

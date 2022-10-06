@@ -19,6 +19,7 @@ struct Vertex{
     float x,y,z;
     tEdge* edge;
     Vertex(float x, float y, float z=0):x(x),y(y),z(z),edge(NULL){}
+    void setEdge(tEdge* edge){this->edge = edge;}
     float distance(float x, float y){
         return sqrt(pow(x-this->x,2)+pow(y-this->y,2));
     }
@@ -31,7 +32,11 @@ struct Edge{
     tEdge* next;
     tEdge* prev;
     tFace* face;
-    Edge(tVertex* origin):origin(origin),twin(NULL),next(NULL),prev(NULL),face(NULL){this->origin->edge = this;}
+    Edge(tVertex* origin):origin(origin),twin(NULL),next(NULL),prev(NULL),face(NULL){}
+    Edge(tVertex* origin, tVertex* destination):origin(origin),twin(NULL),next(NULL),prev(NULL),face(NULL){
+        this->twin = new Edge(destination);
+        this->setTwin(this->twin);
+    }
     void setTwin(tEdge* u){
         this->twin = u;
         u->twin = this;
@@ -64,10 +69,12 @@ struct Face{
         do{
             current->face = this;
             current = current->next;
+            printf(">> Face->next %p\n", current->next);
         }while(current != edge);
     }
     void nextOrbitEdge();
     vector<tEdge*> getEdges();
+    bool contains(tVertex* v);
 };
 
 struct DCEL{
@@ -76,6 +83,10 @@ struct DCEL{
     vector<tFace*> faces;
     DCEL(vector<tVertex> vertices);
     
+    bool inCone(tVertex* u, tVertex* b);
+    bool diagonalie(tVertex* u, tVertex* v);
+    bool sameFace(tVertex* u, tVertex* v);
+    void insertEdge(tVertex* u, tVertex* v);
     tVertex* getClosestVertex(float x, float y, float distance_limit=1);
     tEdge* getClosestEdge(float x, float y, float distance_limit=1);
     tFace* getClosestFace(float x, float y);
@@ -97,40 +108,34 @@ DCEL::DCEL(vector<tVertex> vertices){
     }
 
     tEdge* new_edge = NULL;
-    tEdge* new_twin = NULL;
     tEdge* last_edge = NULL;
-    tEdge* last_twin = NULL;
     tEdge *first_edge = NULL;
-    tEdge *first_twin = NULL;
     for(int i=0; i<vertices.size(); i++){
-        new_edge = new tEdge(this->vertices[i]);
-        new_twin = new tEdge(this->vertices[(i+1)%vertices.size()]);
+        tVertex* u = this->vertices[i];
+        tVertex* v = this->vertices[(i+1)%vertices.size()];
+        new_edge = new tEdge(u,v);
 
         // Set connections
-        new_edge->setTwin(new_twin);
+        u->setEdge(new_edge);
+
         if(last_edge != NULL){
             last_edge->setNext(new_edge);
-            new_twin->setNext(last_twin);
+            new_edge->twin->setNext(last_edge->twin);
         }
         // Saving first edge and twin   
         else{ 
             first_edge = new_edge;
-            first_twin = new_twin;
         }
-
         this->edges.push_back(new_edge);
-        this->edges.push_back(new_twin);
         
         last_edge = new_edge;
-        last_twin = new_twin;
     }
     // Close the polygon
     last_edge->setNext(first_edge);
-    first_twin->setNext(last_twin);
-
+    first_edge->twin->setNext(last_edge->twin);
 
     this->faces.push_back(new tFace(first_edge));
-    this->faces.push_back(new tFace(first_twin));
+    this->faces.push_back(new tFace(first_edge->twin));
 }
 
 // *****************************************************************
@@ -146,6 +151,68 @@ void Vertex::nextOrbitEdge(){
 
 void Face::nextOrbitEdge(){
     this->edge = this->edge->next;
+}
+
+bool Face::contains(tVertex* v){
+    tEdge* current = this->edge;
+    do{
+        if(current->origin == v) return true;
+        current = current->next;
+    }while(current != this->edge);
+    return false;
+}
+
+bool DCEL::diagonalie(tVertex* u, tVertex* v){
+    for(auto e: this->edges){
+        if(e->origin == u 
+            || e->origin == v 
+            || e->twin->origin == u 
+            || e->twin->origin == v) continue;
+        if(e->intersect(new tEdge(u,v))) return false;
+    }
+    return true;
+}
+
+bool DCEL::inCone(tVertex* u, tVertex* v){
+    tVertex* u0 = u->edge->next->origin;
+    tVertex* u1 = u->edge->prev->origin;
+    // If a is a convex vertex
+    if(left(u0, u, u1)) return left(u, v, u0) && left(v, u, u1);
+    // If a is a reflex vertex
+    return left(u, v, u1) || left(v, u, u0);
+
+}
+
+bool DCEL::sameFace(tVertex* u, tVertex* v){
+    tEdge* lu = u->edge;
+    do{
+        u->nextOrbitEdge();
+        tEdge* lv = v->edge;
+        do{
+            v->nextOrbitEdge();
+        }while(lv != v->edge && v->edge->face != lu->face);
+    }while(lu != u->edge && u->edge->face != v->edge->face);
+    
+    return u->edge->face == v->edge->face;
+}
+
+
+void DCEL::insertEdge(tVertex* u, tVertex* v){
+    if(!diagonalie(u, v)) return;
+    if(!sameFace(u, v)) return;
+    if(!inCone(u, v) || !inCone(v, u)) return;
+
+    tEdge* new_edge = new tEdge(u,v);
+    
+    u->edge->prev->setNext(new_edge);
+    v->edge->prev->setNext(new_edge->twin);
+    
+    new_edge->setNext(v->edge);
+    new_edge->twin->setNext(u->edge);
+
+    this->edges.push_back(new_edge);
+
+    this->faces.push_back(new tFace(new_edge));
 }
 
 // *****************************************************************
