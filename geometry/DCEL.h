@@ -1,6 +1,7 @@
 #include<math.h>
 #include<vector>
 #include<stdio.h>
+#include<algorithm>
 
 using namespace std;
 
@@ -20,8 +21,8 @@ struct Vertex{
     tEdge* edge;
     Vertex(float x, float y, float z=0):x(x),y(y),z(z),edge(NULL){}
     void setEdge(tEdge* edge){this->edge = edge;}
-    float distance(float x, float y){
-        return sqrt(pow(x-this->x,2)+pow(y-this->y,2));
+    float distance(tVertex* v){
+        return sqrt(pow(x - v->x,2) + pow(y - v->y,2));
     }
     void nextOrbitEdge();
 };
@@ -46,13 +47,37 @@ struct Edge{
         u->prev = this;
         u->face = this->face;
     }
-    float distance(float x, float y){
-        float x1 = this->origin->x;
-        float y1 = this->origin->y;
-        float x2 = this->twin->origin->x;
-        float y2 = this->twin->origin->y;
-        return abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/sqrt(pow(y2-y1,2)+pow(x2-x1,2));
+    
+    // Binary Search to find the next edge
+    tVertex* getNearestVertex(tVertex* v){
+        int total = 100;
+        tVertex* a = NULL;
+        tVertex* b = NULL;
+        tVertex* m1 = NULL;
+        tVertex* m2 = NULL;
+        if(this->origin->distance(v)<this->twin->origin->distance(v)){
+            a = this->origin;
+            b = this->twin->origin;
+        }
+        else{
+            a = this->twin->origin;
+            b = this->origin;
+        }
+        for(int i=0;i<total;i++){
+            delete m1;
+            delete m2;
+            m1 = new Vertex(a->x + (b->x - a->x)/3, a->y + (b->y - a->y)/3);
+            m2 = new Vertex(a->x + 2*(b->x - a->x)/3, a->y + 2*(b->y - a->y)/3);
+            if(m1->distance(v)<m2->distance(v)){
+                b = m2;
+            }
+            else{
+                a = m1;
+            }
+        }
+        return m1;
     }
+
     bool intersect(tEdge* u){
         return left(this->origin, this->twin->origin, u->origin) 
                 != left(this->origin, this->twin->origin, u->twin->origin) 
@@ -69,7 +94,6 @@ struct Face{
         do{
             current->face = this;
             current = current->next;
-            printf(">> Face->next %p\n", current->next);
         }while(current != edge);
     }
     void nextOrbitEdge();
@@ -87,6 +111,7 @@ struct DCEL{
     bool diagonalie(tVertex* u, tVertex* v);
     bool sameFace(tVertex* u, tVertex* v);
     void insertEdge(tVertex* u, tVertex* v);
+    void insertVertex(tEdge* e, float x, float y);
     tVertex* getClosestVertex(float x, float y, float distance_limit=1);
     tEdge* getClosestEdge(float x, float y, float distance_limit=1);
     tFace* getClosestFace(float x, float y);
@@ -163,12 +188,15 @@ bool Face::contains(tVertex* v){
 }
 
 bool DCEL::diagonalie(tVertex* u, tVertex* v){
+    tEdge* diag = new tEdge(u,v);
     for(auto e: this->edges){
         if(e->origin == u 
             || e->origin == v 
             || e->twin->origin == u 
             || e->twin->origin == v) continue;
-        if(e->intersect(new tEdge(u,v))) return false;
+        if(e->intersect(diag)) return false;
+        if(e->origin == u && e->twin->origin == v) return false;
+        if(e->origin == v && e->twin->origin == u) return false;
     }
     return true;
 }
@@ -215,13 +243,45 @@ void DCEL::insertEdge(tVertex* u, tVertex* v){
     this->faces.push_back(new tFace(new_edge));
 }
 
+void DCEL::insertVertex(tEdge* e, float x, float y){
+    tVertex* new_vert = new tVertex(x,y);
+    new_vert = e->getNearestVertex(new_vert);
+    
+
+    tEdge* bef = e->prev;
+    tEdge* aft = e->next;
+    
+    // Remove edge from list
+    this->edges.erase(remove(this->edges.begin(), this->edges.end(), e), this->edges.end());
+
+    delete e;
+
+    tEdge* edge0 = new tEdge(bef->twin->origin, new_vert);
+    tEdge* edge1 = new tEdge(new_vert, aft->origin);
+    new_vert->setEdge(edge1);
+
+    bef->setNext(edge0);
+    edge0->setNext(edge1);
+    edge1->setNext(aft);
+
+    // Set Next Twin
+    aft->twin->setNext(edge1->twin);
+    edge1->twin->setNext(edge0->twin);
+    edge0->twin->setNext(bef->twin);
+
+    this->vertices.push_back(new_vert);
+    this->edges.push_back(edge0);
+    this->edges.push_back(edge1);
+}
+
 // *****************************************************************
 //                          DCEL CLOSEST FUNCTIONS
 // *****************************************************************
 tVertex* DCEL::getClosestVertex(float x, float y, float distance_limit){
     tVertex* closest = NULL;
+    tVertex* u = new tVertex(x,y);
     for(auto vert: this->vertices){
-        float distance = vert->distance(x,y);
+        float distance = vert->distance(u);
         if(distance < distance_limit){
             distance_limit = distance;
             closest = vert;
@@ -232,8 +292,11 @@ tVertex* DCEL::getClosestVertex(float x, float y, float distance_limit){
 
 tEdge* DCEL::getClosestEdge(float x, float y, float distance_limit){
     tEdge* closest = NULL;
+    tVertex* u = new tVertex(x,y);
     for(auto edge: this->edges){
-        float distance = edge->distance(x,y);
+        tVertex* v = edge->getNearestVertex(u);
+        float distance = v->distance(u);
+
         if(distance < distance_limit){
             distance_limit = distance;
             closest = edge;
@@ -243,10 +306,12 @@ tEdge* DCEL::getClosestEdge(float x, float y, float distance_limit){
 }
 
 tFace* DCEL::getClosestFace(float x, float y){
-    tEdge* closest_edge = this->getClosestEdge(x,y);
+    tEdge* closest_edge = this->getClosestEdge(x,y,2);
     tVertex* vertex = new tVertex(x,y);
-    if (left(closest_edge->origin, closest_edge->twin->origin, vertex))
+
+    if (left(closest_edge->origin, closest_edge->twin->origin, vertex)){
         return closest_edge->face;
+    }
     return closest_edge->twin->face;
 }
 

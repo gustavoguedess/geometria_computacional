@@ -126,6 +126,21 @@ void updateDCEL(tDCEL* dcel){
 
     dcel_vertices_size = dcel->vertices.size();
     dcel_edges_size = dcel->edges.size();
+
+    printf("DCEL %d vertices %d edges %d faces\n", dcel->vertices.size(), dcel->edges.size(), dcel->faces.size());
+    // print vertices
+    for (int i = 0; i < dcel->vertices.size(); i++){
+        printf("Vertex %d: (%f, %f)\n", i, dcel->vertices[i]->x, dcel->vertices[i]->y);
+    }
+    // print edges
+    for (int i = 0; i < dcel->edges.size(); i++){
+        printf("Edge %d: (%f, %f) -> (%f, %f)\n", i, dcel->edges[i]->origin->x, dcel->edges[i]->origin->y, dcel->edges[i]->twin->origin->x, dcel->edges[i]->twin->origin->y);
+    }
+    // print faces
+    for (int i = 0; i < dcel->faces.size(); i++){
+        printf("Face %d: (%f,%f)\n", i, dcel->faces[i]->edge->origin->x, dcel->faces[i]->edge->origin->y);
+    }
+
 }
 
 

@@ -228,7 +228,10 @@ void leftButtonPressed(float x, float y){
     else if(closest_edge != NULL){
         printf("[INFO] Closest edge: (%f, %f) -> (%f, %f)\n", closest_edge->origin->x, closest_edge->origin->y, closest_edge->twin->origin->x, closest_edge->twin->origin->y);
         if(mode == MODE_SELECTED_EDGE && selected_edge == closest_edge){
-            // TODO Create new vertex
+            mode = MODE_NONE;
+            dcel->insertVertex(selected_edge, x, y);
+            updateDCEL(dcel);
+            printf("[INFO] Vertex Created.");
         }
         else{
             mode = MODE_SELECTED_EDGE;
